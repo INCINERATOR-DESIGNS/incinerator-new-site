@@ -27,7 +27,9 @@ else:
     )
 
 LOGO_PATH = BASE_DIR / "assets" / "INCINERATOR.jpg"
-IMPORT_ENABLED = os.environ.get("INCINERATOR_ENABLE_IMPORTER", "0") == "1" and "working" in DATABASE.name.lower()
+
+IMPORT_ENABLED = os.environ.get("INCINERATOR_ENABLE_IMPORTER", "1") == "1"
+
 
 st.set_page_config(page_title="INCINERATOR | CEW Database", page_icon="🔥", layout="wide", initial_sidebar_state="expanded")
 
