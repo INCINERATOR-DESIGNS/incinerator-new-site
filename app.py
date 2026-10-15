@@ -361,11 +361,18 @@ elif page == "Match Importer":
         "Imported records remain flagged for review; career statistics are not recalculated automatically."
     )
 
-    # Fail closed: the importer must be explicitly enabled and the database filename must be a working copy.
-    safe_working_db = "working" in DATABASE.name.lower()
-    if not IMPORT_ENABLED or not safe_working_db:
-        st.error("Importer disabled for safety. Enable it explicitly and select a database whose filename contains 'working'.")
-        st.stop()
+    
+# Fail closed: importer requires explicit opt-in and a working-copy database.
+safe_working_db = "working" in DATABASE.name.lower()
+
+if not IMPORT_ENABLED or not safe_working_db:
+    st.error(
+        "Importer disabled for safety. The importer requires "
+        "INCINERATOR_ENABLE_IMPORTER=1 and a database filename "
+        "containing 'working'."
+    )
+    st.stop()
+
 
     wrestlers_for_import = table(tables, "wrestlers").copy()
     if wrestlers_for_import.empty:
