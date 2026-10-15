@@ -313,31 +313,66 @@ elif page == "Events & FUSION":
 
 elif page == "Teams & Factions":
     st.markdown("## Teams & Factions")
-    st.caption("Confirmed memberships are separated from planned teams, future factions, and planned recruitment.")
-    left,right=st.columns(2)
-    with left:
-        st.markdown("### Teams")
-        if teams.empty: st.info("No teams recorded.")
-        else:
-            for _,r in teams.sort_values("team_name").iterrows():
-                status = clean(r.get("status"), "ACTIVE" if clean(r.get("active"),"0")=="1" else "FORMER / INACTIVE")
-                members = group_members(team_members, r.get("id"), "team_id")
-                members_html = "<br>".join(esc(m) for m in members) if members else "Memberships not recorded"
-                notes = clean(r.get("notes"))
-                notes_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(notes)}</div>' if notes else ""
-                st.markdown(f'<div class="profile-card"><div style="float:right" class="profile-sub">{esc(status)}</div><div class="profile-name">{esc(clean(r.get("team_name"),"Unnamed team"))}</div><div class="profile-sub">Debut: {esc(datefmt(r.get("debut_date")))} · End: {esc(datefmt(r.get("end_date")) if clean(r.get("end_date")) else "Not recorded")}</div><div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{members_html}</div>{notes_html}</div>',unsafe_allow_html=True)
-    with right:
-        st.markdown("### Factions")
-        if factions.empty: st.info("No faction records have been entered yet.")
-        else:
-            for _,r in factions.sort_values("faction_name").iterrows():
-                status = clean(r.get("status"), "ACTIVE" if clean(r.get("active"),"0")=="1" else "FORMER / INACTIVE")
-                members = group_members(faction_members, r.get("id"), "faction_id")
-                members_html = "<br>".join(esc(m) for m in members) if members else "Memberships not recorded"
-                notes = clean(r.get("notes"))
-                notes_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(notes)}</div>' if notes else ""
-                st.markdown(f'<div class="profile-card"><div style="float:right" class="profile-sub">{esc(status)}</div><div class="profile-name">{esc(clean(r.get("faction_name"),"Unnamed faction"))}</div><div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{members_html}</div>{notes_html}</div>',unsafe_allow_html=True)
+    st.caption("Tag Teams (2 members) and Factions (3+ members).")
+    
+    left, right = st.columns(2)
+    
+    # Helper function to check member count
+    def get_group_member_list(member_df, group_id, group_key):
+        if member_df.empty or group_key not in member_df.columns or "wrestler_id" not in member_df.columns: return []
+        rows = member_df[member_df[group_key].astype(str) == str(group_id)]
+        out = []
+        for _, member in rows.iterrows():
+            name = wrestler_name_by_id.get(str(member.get("wrestler_id")), f"Wrestler ID {member.get('wrestler_id')}")
+            out.append(name)
+        return out
 
+    with left:
+        st.markdown("### Tag Teams (2 Members)")
+        teams_found = False
+        if not teams.empty:
+            for _, r in teams.sort_values("team_name").iterrows():
+                members = get_group_member_list(team_members, r.get("id"), "team_id")
+                # Only show if it fits the Tag Team definition (2 members) or if no members are listed yet
+                if len(members) == 2 or len(members) == 0:
+                    teams_found = True
+                    status = clean(r.get("status"), "ACTIVE" if clean(r.get("active"),"0")=="1" else "FORMER / INACTIVE")
+                    members_html = "<br>".join(esc(m) for m in members) if members else "Memberships not recorded"
+                    notes = clean(r.get("notes"))
+                    notes_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(notes)}</div>' if notes else ""
+                    st.markdown(f'<div class="profile-card"><div style="float:right" class="profile-sub">{esc(status)}</div><div class="profile-name">{esc(clean(r.get("team_name"),"Unnamed team"))}</div><div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{members_html}</div>{notes_html}</div>', unsafe_allow_html=True)
+        if not teams_found:
+            st.info("No tag teams recorded yet.")
+
+    with right:
+        st.markdown("### Factions (3+ Members)")
+        factions_found = False
+        
+        # Check database factions
+        if not factions.empty:
+            for _, r in factions.sort_values("faction_name").iterrows():
+                factions_found = True
+                status = clean(r.get("status"), "ACTIVE" if clean(r.get("active"),"0")=="1" else "FORMER / INACTIVE")
+                members = get_group_member_list(faction_members, r.get("id"), "faction_id")
+                members_html = "<br>".join(esc(m) for m in members) if members else "Memberships not recorded"
+                notes = clean(r.get("notes"))
+                notes_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(notes)}</div>' if notes else ""
+                st.markdown(f'<div class="profile-card"><div style="float:right" class="profile-sub">{esc(status)}</div><div class="profile-name">{esc(clean(r.get("faction_name"),"Unnamed faction"))}</div><div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{members_html}</div>{notes_html}</div>', unsafe_allow_html=True)
+        
+        # Also catch any teams in the database that actually have 3+ members so they display properly in factions
+        if not teams.empty:
+            for _, r in teams.sort_values("team_name").iterrows():
+                members = get_group_member_list(team_members, r.get("id"), "team_id")
+                if len(members) >= 3:
+                    factions_found = True
+                    status = clean(r.get("status"), "ACTIVE" if clean(r.get("active"),"0")=="1" else "FORMER / INACTIVE")
+                    members_html = "<br>".join(esc(m) for m in members)
+                    notes = clean(r.get("notes"))
+                    notes_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(notes)}</div>' if notes else ""
+                    st.markdown(f'<div class="profile-card"><div style="float:right" class="profile-sub">{esc(status)}</div><div class="profile-name">{esc(clean(r.get("team_name"),"Unnamed team"))}</div><div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{members_html}</div>{notes_html}</div>', unsafe_allow_html=True)
+
+        if not factions_found:
+            st.info("No faction records have been entered yet.")
 elif page == "Data Review":
     st.markdown("## Data Review"); st.caption("Review flags are read from the database; this page does not auto-correct records.")
     flagged=matches.copy()
