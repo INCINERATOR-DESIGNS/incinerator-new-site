@@ -12,12 +12,11 @@ import streamlit as st
 BASE_DIR = Path(__file__).resolve().parent
 
 DB_CANDIDATES = [
+    BASE_DIR / "incinerator_working.db",
     BASE_DIR / "incinerator_working_championships.db",
     BASE_DIR / "INCINERATOR_WORKING_COPY.db",
-    BASE_DIR / "incinerator_working.db",
     BASE_DIR / "incinerator.db",
 ]
-
 
 if os.environ.get("INCINERATOR_DB_PATH"):
     DATABASE = Path(os.environ["INCINERATOR_DB_PATH"]).expanduser().resolve()
