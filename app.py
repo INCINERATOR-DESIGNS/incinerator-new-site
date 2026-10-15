@@ -18,18 +18,15 @@ DB_CANDIDATES = [
     BASE_DIR / "incinerator.db",
 ]
 
+
 if os.environ.get("INCINERATOR_DB_PATH"):
     DATABASE = Path(os.environ["INCINERATOR_DB_PATH"]).expanduser().resolve()
 else:
-    
-DATABASE = (
-    Path(os.environ["INCINERATOR_DB_PATH"]).expanduser().resolve()
-    if os.environ.get("INCINERATOR_DB_PATH")
-    else next(
+    DATABASE = next(
         (path.resolve() for path in DB_CANDIDATES if path.is_file()),
         (BASE_DIR / "incinerator.db").resolve(),
     )
-)
+
 
 
 LOGO_PATH = BASE_DIR / "assets" / "INCINERATOR.jpg"
