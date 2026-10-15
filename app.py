@@ -10,8 +10,21 @@ import pandas as pd
 import streamlit as st
 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_DB = BASE_DIR / "incinerator_working_championships.db"
-DATABASE = Path(os.environ.get("INCINERATOR_DB_PATH", str(DEFAULT_DB))).resolve()
+
+DB_CANDIDATES = [
+    BASE_DIR / "incinerator_working_championships.db",
+    BASE_DIR / "INCINERATOR_WORKING_COPY.db",
+    BASE_DIR / "incinerator_working.db",
+    BASE_DIR / "incinerator.db",
+]
+
+if os.environ.get("INCINERATOR_DB_PATH"):
+    DATABASE = Path(os.environ["INCINERATOR_DB_PATH"]).expanduser().resolve()
+else:
+    DATABASE = next(
+        (path.resolve() for path in DB_CANDIDATES if path.is_file()),
+        (BASE_DIR / "incinerator.db").resolve(),
+    )
 
 LOGO_PATH = BASE_DIR / "assets" / "INCINERATOR.jpg"
 IMPORT_ENABLED = os.environ.get("INCINERATOR_ENABLE_IMPORTER", "0") == "1" and "working" in DATABASE.name.lower()
@@ -590,4 +603,3 @@ elif page == "Match Importer":
 
 st.divider()
 st.markdown('<div style="text-align:center;color:#6b7280;font-size:.78rem;letter-spacing:1px">🔥 INCINERATOR · CEW RECORDS<br>WORKING COPY PROTECTION · VERIFIED IMPORTS ONLY</div>',unsafe_allow_html=True)
-
