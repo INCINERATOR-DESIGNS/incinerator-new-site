@@ -437,6 +437,9 @@ elif page == "Match Importer":
             st.session_state["incinerator_pending_matches"] = []
 
         pending = st.session_state["incinerator_pending_matches"]
+        if st.session_state.get("confirm_incinerator_batch"):
+            st.session_state["confirm_incinerator_batch"] = False
+    
 
         with st.form("real_match_importer", clear_on_submit=True):
             st.subheader("Event details")
@@ -639,7 +642,7 @@ elif page == "Match Importer":
                             conn.commit()
 
                         st.session_state["incinerator_pending_matches"] = []
-                        st.session_state["confirm_incinerator_batch"] = False
+                        
                         st.cache_data.clear()
                         st.success(f"Successfully imported {len(saved)} match(es) into {WORKING_DATABASE.name}.")
                         st.warning("All imported matches remain flagged for review. Wrestler records, profiles, streaks, and match history were NOT automatically recalculated.")
