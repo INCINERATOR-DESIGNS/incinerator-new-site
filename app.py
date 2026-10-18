@@ -409,19 +409,12 @@ elif page == "Teams & Factions":
         if "vanity" in name_lower: return "VANITY PROJECT.png"
         return None
 
-    # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
-                def render_logo(name, logo_file):
-        if logo_file:
-            import base64
-            if os.path.exists(logo_file):
-                with open(logo_file, "rb") as f:
-                    encoded = base64.b64encode(f.read()).decode()
-                return f'<img src="data:image/png;base64,{encoded}" style="max-height: 60px; max-width: 100%; margin-bottom: 10px; object-fit: contain;">'
-            else:
-                return f'<div style="color:red; font-size:10px;">FILE NOT FOUND: {logo_file}</div>'
+        # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
+    def render_logo(name, logo_file):
+        if logo_file and os.path.exists(logo_file):
+            st.image(logo_file, width=150)
         else:
-            return f'<div style="background: linear-gradient(145deg, #1f2229, #15171c); border: 1px solid #30323b; border-radius: 6px; padding: 15px; margin-bottom: 10px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.1rem; letter-spacing: 1px;">{esc(name).upper()}</div>'
-    # --- FETCH TEAMS ---
+            st.markdown(f'<div style="background: linear-gradient(145deg, #1f2229, #15171c); border: 1px solid #30323b; border-radius: 6px; padding: 15px; margin-bottom: 10px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.1rem; letter-spacing: 1px;">{esc(name).upper()}</div>', unsafe_allow_html=True)    # --- FETCH TEAMS ---
     all_teams = []
     if not teams.empty:
         for _, r in teams.sort_values("team_name").iterrows():
