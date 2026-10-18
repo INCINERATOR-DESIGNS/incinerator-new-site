@@ -410,8 +410,7 @@ elif page == "Teams & Factions":
         return None
 
     # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
-        def render_logo(name, logo_file):
-            def render_logo(name, logo_file):
+                def render_logo(name, logo_file):
         if logo_file:
             import base64
             if os.path.exists(logo_file):
