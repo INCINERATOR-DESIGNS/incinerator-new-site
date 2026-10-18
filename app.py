@@ -429,7 +429,7 @@ elif page == "Teams & Factions":
     left, right = st.columns(2)
 
     # --- LEFT COLUMN: TAG TEAMS ---
-        left, right = st.columns(2)
+    left, right = st.columns(2)
 
     # --- LEFT COLUMN: TAG TEAMS ---
     with left:
