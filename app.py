@@ -643,8 +643,7 @@ elif page == "Match Importer":
                     if st.button("REMOVE FROM QUEUE", key=f"remove_pending_{idx}"):
                         pending.pop(idx)
                         st.rerun()
-
-                                    st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
+            st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
             with st.form("confirm_batch_form"):
                 confirm_batch = st.checkbox("I reviewed every queued match and checked that none are duplicates.", key="confirm_incinerator_batch")
                 submit_batch = st.form_submit_button("CONFIRM IMPORT — SAVE ENTIRE BATCH", type="primary", use_container_width=True)
@@ -658,8 +657,7 @@ elif page == "Match Importer":
                                 or "working" not in WORKING_DATABASE.name.lower()
                                 or not WORKING_DATABASE.is_file()):
                             raise RuntimeError("Safety check failed: refusing to write to a non-working database.")
-                        with sqlite3.connect(str(WORKING_DATABASE), timeout=10) as conn:
-                            conn.execute("PRAGMA foreign_keys=ON")
+                        with sqlite3.connect(str(WORKING_DATABASE), timeout=10) as conn:                            conn.execute("PRAGMA foreign_keys=ON")
                             conn.execute("BEGIN IMMEDIATE")
                             match_cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
                             required_match_cols = {
