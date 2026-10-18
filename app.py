@@ -410,11 +410,14 @@ elif page == "Teams & Factions":
         return None
 
         # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
-    def render_logo(name, logo_file):
-        if logo_file and os.path.exists(logo_file):
-            st.image(logo_file, width=150)
-        else:
-            st.markdown(f'<div style="background: linear-gradient(145deg, #1f2229, #15171c); border: 1px solid #30323b; border-radius: 6px; padding: 15px; margin-bottom: 10px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.1rem; letter-spacing: 1px;">{esc(name).upper()}</div>', unsafe_allow_html=True)    # --- FETCH TEAMS ---
+        def render_logo(name, logo_file):
+        if logo_file:
+            import base64, os
+            if os.path.exists(logo_file):
+                with open(logo_file, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode()
+                return f'<img src="data:image/png;base64,{encoded}" style="width: 100%; max-height: 120px; object-fit: contain; margin-bottom: 15px;">'
+        return f'<div style="background: #1f2229; padding: 20px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.2rem; margin-bottom: 15px;">{esc(name).upper()}</div>'
     all_teams = []
     if not teams.empty:
         for _, r in teams.sort_values("team_name").iterrows():
@@ -444,43 +447,36 @@ elif page == "Teams & Factions":
         if not all_teams:
             st.info("No tag teams recorded.")
         else:
-            for g in all_teams:
-                m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "Memberships not recorded"
-                n_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(g["notes"])}</div>' if g["notes"] else ""
+                        for g in all_teams:
+                # Join members with line breaks, no "MEMBERS" header
+                m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "None"
                 
                 logo_file = get_team_logo(g["name"])
                 logo_html = render_logo(g["name"], logo_file)
 
                 st.markdown(
-                    f'<div class="profile-card">'
+                    f'<div class="profile-card" style="text-align: center;">'
                     f'{logo_html}'
-                    f'<div style="float:right" class="profile-sub">{esc(g["status"])}</div>'
-                    f'<div class="profile-name">{esc(g["name"])}</div>'
-                    f'<div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{m_html}</div>'
-                    f'{n_html}</div>',
+                    f'<div class="profile-name" style="font-size: 1.1rem; margin-bottom: 5px;">{m_html}</div>'
+                    f'<div class="profile-sub" style="margin-top: 15px; border-top: 1px solid #30323b; padding-top: 8px;">{esc(g["status"])}</div>'
+                    f'</div>',
                     unsafe_allow_html=True
                 )
 
     # --- RIGHT COLUMN: FACTIONS ---
-    with right:
-        st.markdown("### Factions")
-        if not all_factions:
-            st.info("No faction records found.")
-        else:
-            for g in all_factions:
-                m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "Memberships not recorded"
-                n_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(g["notes"])}</div>' if g["notes"] else ""
+                for g in all_factions:
+                # Join members with line breaks, no "MEMBERS" header
+                m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "None"
                 
                 logo_file = get_team_logo(g["name"])
                 logo_html = render_logo(g["name"], logo_file)
 
                 st.markdown(
-                    f'<div class="profile-card">'
+                    f'<div class="profile-card" style="text-align: center;">'
                     f'{logo_html}'
-                    f'<div style="float:right" class="profile-sub">{esc(g["status"])}</div>'
-                    f'<div class="profile-name">{esc(g["name"])}</div>'
-                    f'<div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{m_html}</div>'
-                    f'{n_html}</div>',
+                    f'<div class="profile-name" style="font-size: 1.1rem; margin-bottom: 5px;">{m_html}</div>'
+                    f'<div class="profile-sub" style="margin-top: 15px; border-top: 1px solid #30323b; padding-top: 8px;">{esc(g["status"])}</div>'
+                    f'</div>',
                     unsafe_allow_html=True
                 )
 elif page == "Data Review":
