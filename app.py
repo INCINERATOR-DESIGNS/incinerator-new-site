@@ -455,7 +455,7 @@ elif page == "Teams & Factions":
                         try:
                             with open(logo_file, "rb") as f:
                                 encoded = base64.b64encode(f.read()).decode()
-                            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{encoded}" style="max-height: 120px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+                            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{encoded}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
                         except Exception:
                             st.markdown(f'<div style="background: #1f2229; padding: 20px; text-align: center; font-weight: 700; color: #6b7280;">{esc(g["name"]).upper()}</div>', unsafe_allow_html=True)
                     else:
@@ -481,7 +481,7 @@ elif page == "Teams & Factions":
                         try:
                             with open(logo_file, "rb") as f:
                                 encoded = base64.b64encode(f.read()).decode()
-                            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{encoded}" style="max-height: 120px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+                            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{encoded}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
                         except Exception:
                             st.markdown(f'<div style="background: #1f2229; padding: 20px; text-align: center; font-weight: 700; color: #6b7280;">{esc(g["name"]).upper()}</div>', unsafe_allow_html=True)
                     else:
