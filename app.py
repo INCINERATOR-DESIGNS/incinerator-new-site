@@ -335,13 +335,27 @@ elif page == "Championships":
                 st.info("Champion not yet crowned.")
             else:
                 reign = active_reign.iloc[0]
-                champ_name = wrestler_name_by_id.get(str(current_champ_id), "Unknown Champion")
                 won_event = clean(reign.get("won_event"), "Unknown Event")
                 won_date = datefmt(reign.get("won_date"))
                 days_held = clean(reign.get("days_held"), "0")
                 
+                # --- HYBRID DISPLAY LOGIC ---
+                champ_name = wrestler_name_by_id.get(str(current_champ_id), "Unknown Champion")
+                champ_subtitle = ""
+                
+                if title_id == 5: # Tag Team Title
+                    champ_name = "RASCALZ"
+                    champ_subtitle = '<div style="color:#9ca3af; font-size:0.85rem; margin-top:2px;">Dezmond Xavier, Zachary Wentz & Myron Reed</div>'
+                
                 # Current Champion Display
-                st.markdown(f'<div class="profile-card"><div class="profile-name">👑 {esc(champ_name)}</div><div class="profile-sub">Won at {esc(won_event)} on {esc(won_date)} · <b>{esc(days_held)} Days Held</b></div></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="profile-card">'
+                    f'<div class="profile-name">👑 {esc(champ_name)}</div>'
+                    f'{champ_subtitle}'
+                    f'<div class="profile-sub">Won at {esc(won_event)} on {esc(won_date)} · <b>{esc(days_held)} Days Held</b></div>'
+                    f'</div>', 
+                    unsafe_allow_html=True
+                )
                 
                 # Defenses Dropdown
                 champ_defenses = defenses[defenses["reign_id"] == reign.get("id")]
@@ -360,14 +374,15 @@ elif page == "Championships":
                 else:
                     for _, r in title_reigns.iterrows():
                         r_champ = wrestler_name_by_id.get(str(r.get("champion_id")), "Unknown")
-                        # Handle the Freebird rule special text we put in the DB
-                        if title_id == 5 and r.get("champion_id") == 4:
-                            r_champ = "RASCALZ (Dezmond, Wentz, Myron)"
-                            
-                        r_status = clean(r.get("status"), "Ended")
-                        if "DOGS" in r_status: r_status = r_status.replace(" - Ended", "") # clean up text
-                        if "RASCALZ" in r_status: r_status = r_status.replace(" - Active", "")
                         
+                        # History Hybrid Display
+                        if title_id == 5:
+                            if r.get("champion_id") == 4: # Dezmond
+                                r_champ = "RASCALZ (Dezmond, Wentz, Myron)"
+                            elif r.get("champion_id") == 1: # Gabe Kidd for DOGS
+                                r_champ = "DOGS (Gabe Kidd & Clark Connors)"
+                                
+                        r_status = clean(r.get("status"), "Ended")
                         r_won = datefmt(r.get("won_date"))
                         r_lost = datefmt(r.get("lost_date")) if clean(r.get("lost_date")) else "Current"
                         r_days = clean(r.get("days_held"), "0")
@@ -375,7 +390,6 @@ elif page == "Championships":
                         st.markdown(f"**{esc(r_champ)}** ({r_won} - {r_lost}) — {r_days} Days — *{esc(r_status)}*")
             
             st.divider()
-
 elif page == "Teams & Factions":
     st.markdown("## Teams & Factions")
     st.caption("Tag Teams and Factions pulled directly from the CEW archive.")
