@@ -644,7 +644,7 @@ elif page == "Match Importer":
                         pending.pop(idx)
                         st.rerun()
 
-                       st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
+                                    st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
             with st.form("confirm_batch_form"):
                 confirm_batch = st.checkbox("I reviewed every queued match and checked that none are duplicates.", key="confirm_incinerator_batch")
                 submit_batch = st.form_submit_button("CONFIRM IMPORT — SAVE ENTIRE BATCH", type="primary", use_container_width=True)
