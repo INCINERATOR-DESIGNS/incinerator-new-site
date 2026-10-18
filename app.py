@@ -448,13 +448,10 @@ elif page == "Teams & Factions":
                 )
 
     # --- RIGHT COLUMN: FACTIONS ---
-                for g in all_factions:
-                # Join members with line breaks, no "MEMBERS" header
+                            for g in all_factions:
                 m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "None"
-                
                 logo_file = get_team_logo(g["name"])
                 logo_html = render_logo(g["name"], logo_file)
-
                 st.markdown(
                     f'<div class="profile-card" style="text-align: center;">'
                     f'{logo_html}'
