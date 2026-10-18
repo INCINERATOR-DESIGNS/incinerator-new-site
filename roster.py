@@ -30,7 +30,6 @@ def load_data():
         return pd.read_sql_query("SELECT * FROM wrestlers", conn)
 
 df = load_data()
-st.write(df[['canonical_name', 'image_url']].head(5))
 st.markdown("<h1 style='text-align:center; font-size: 3.5rem;'>🔥 CEW ROSTER</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align:center; color:#9ca3af !important; margin-bottom: 40px;'>CONTINENTAL ELITE WRESTLING</h3>", unsafe_allow_html=True)
 
