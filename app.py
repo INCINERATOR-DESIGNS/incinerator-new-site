@@ -657,7 +657,8 @@ elif page == "Match Importer":
                                 or "working" not in WORKING_DATABASE.name.lower()
                                 or not WORKING_DATABASE.is_file()):
                             raise RuntimeError("Safety check failed: refusing to write to a non-working database.")
-                        with sqlite3.connect(str(WORKING_DATABASE), timeout=10) as conn:                            conn.execute("PRAGMA foreign_keys=ON")
+                        with sqlite3.connect(str(WORKING_DATABASE), timeout=10) as conn:
+                            conn.execute("PRAGMA foreign_keys=ON")
                             conn.execute("BEGIN IMMEDIATE")
                             match_cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
                             required_match_cols = {
