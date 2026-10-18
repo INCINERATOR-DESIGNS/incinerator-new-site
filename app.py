@@ -425,12 +425,20 @@ elif page == "Teams & Factions":
                 "members": group_members(faction_members, r.get("id"), "faction_id"),
                 "notes": clean(r.get("notes"))
             })
+    # --- FETCH TEAMS ---
+    all_teams = []
+    if not teams.empty:
+        for _, r in teams.sort_values("team_name").iterrows():
+            all_teams.append({
+                "name": clean(r.get("team_name"), "Unnamed team"),
+                "status": clean(r.get("status"), "ACTIVE" if clean(r.get("active"), "0") == "1" else "FORMER / INACTIVE"),
+                "members": group_members(team_members, r.get("id"), "team_id"),
+                "notes": clean(r.get("notes"))
+            })
 
     left, right = st.columns(2)
 
     # --- LEFT COLUMN: TAG TEAMS ---
-    left, right = st.columns(2)
-
     # --- LEFT COLUMN: TAG TEAMS ---
     with left:
         st.markdown("### Teams")
