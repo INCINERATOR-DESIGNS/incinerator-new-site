@@ -27,7 +27,7 @@ WORKING_DATABASE = next(
     None,
 )
 
-LOGO_PATH = BASE_DIR / "assets" / "INCINERATOR.jpg"
+LOGO_PATH = BASE_DIR / "incinerator.jpg"
 IMPORT_ENABLED = os.environ.get("INCINERATOR_ENABLE_IMPORTER", "0") == "1"
 
 st.set_page_config(page_title="INCINERATOR | CEW Database", page_icon="🔥", layout="wide", initial_sidebar_state="expanded")
@@ -144,7 +144,7 @@ with st.sidebar:
     
     st.markdown('<div style="color:#656974;font-size:.72rem;letter-spacing:1px;font-weight:700;margin:14px 0 4px">THE WRESTLING RECORD</div>', unsafe_allow_html=True)
     
-    pages = ["Dashboard", "Match Explorer", "Wrestler Directory", "Events & FUSION", "Teams & Factions", "Data Review"]
+    pages = ["Dashboard", "Match Explorer", "Wrestler Directory", "Events & FUSION", "Championships", "Teams & Factions", "Data Review"]
     if IMPORT_ENABLED and WORKING_DATABASE is not None: pages.append("Match Importer")
     
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
@@ -310,53 +310,138 @@ elif page == "Events & FUSION":
                     if "match_number" in subset: subset=subset.sort_values("match_number")
                     for _,r in subset.iterrows(): match_card(r)
         else: st.info("The event fields required to group episodes are not available.")
+elif page == "Championships":
+    st.markdown("## 🏆 CEW Championships")
+    st.caption("The gold standard of Continental Elite Wrestling.")
+    
+    champs = table(tables, "Championships")
+    reigns = table(tables, "title_reigns")
+    defenses = table(tables, "title_defenses")
+    
+    if champs.empty:
+        st.info("No championships found in the database.")
+    else:
+        for _, c in champs.iterrows():
+            title_id = c.get("id")
+            title_name = clean(c.get("title_name"), "Unknown Title")
+            current_champ_id = c.get("current_champion_id")
+            
+            # Find the active reign for this title
+            active_reign = reigns[(reigns["championship_id"] == title_id) & (reigns["status"] == "Active")]
+            
+            st.markdown(f"### {title_name}")
+            
+            if active_reign.empty or pd.isna(current_champ_id):
+                st.info("Champion not yet crowned.")
+            else:
+                reign = active_reign.iloc[0]
+                champ_name = wrestler_name_by_id.get(str(current_champ_id), "Unknown Champion")
+                won_event = clean(reign.get("won_event"), "Unknown Event")
+                won_date = datefmt(reign.get("won_date"))
+                days_held = clean(reign.get("days_held"), "0")
+                
+                # Current Champion Display
+                st.markdown(f'<div class="profile-card"><div class="profile-name">👑 {esc(champ_name)}</div><div class="profile-sub">Won at {esc(won_event)} on {esc(won_date)} · <b>{esc(days_held)} Days Held</b></div></div>', unsafe_allow_html=True)
+                
+                # Defenses Dropdown
+                champ_defenses = defenses[defenses["reign_id"] == reign.get("id")]
+                with st.expander(f"🛡️ View Defenses ({len(champ_defenses)})"):
+                    if champ_defenses.empty:
+                        st.write("No defenses recorded yet.")
+                    else:
+                        for _, d in champ_defenses.iterrows():
+                            st.write(f"• **{clean(d.get('event_date'))}** at **{clean(d.get('event_name'))}** — {clean(d.get('match_time'))} mins — ⭐ {clean(d.get('star_rating'))}")
+            
+            # History Dropdown
+            with st.expander("📜 View Full Title History"):
+                title_reigns = reigns[reigns["championship_id"] == title_id].sort_values("won_date")
+                if title_reigns.empty:
+                    st.write("No history recorded.")
+                else:
+                    for _, r in title_reigns.iterrows():
+                        r_champ = wrestler_name_by_id.get(str(r.get("champion_id")), "Unknown")
+                        # Handle the Freebird rule special text we put in the DB
+                        if title_id == 5 and r.get("champion_id") == 4:
+                            r_champ = "RASCALZ (Dezmond, Wentz, Myron)"
+                            
+                        r_status = clean(r.get("status"), "Ended")
+                        if "DOGS" in r_status: r_status = r_status.replace(" - Ended", "") # clean up text
+                        if "RASCALZ" in r_status: r_status = r_status.replace(" - Active", "")
+                        
+                        r_won = datefmt(r.get("won_date"))
+                        r_lost = datefmt(r.get("lost_date")) if clean(r.get("lost_date")) else "Current"
+                        r_days = clean(r.get("days_held"), "0")
+                        
+                        st.markdown(f"**{esc(r_champ)}** ({r_won} - {r_lost}) — {r_days} Days — *{esc(r_status)}*")
+            
+            st.divider()
 
 elif page == "Teams & Factions":
     st.markdown("## Teams & Factions")
-    st.caption("Teams (2 members) and Factions (3+ members) automatically categorized.")
+    st.caption("Tag Teams and Factions pulled directly from the CEW archive.")
 
-    # 1. Fetch and process all groups and their members
-    all_groups = []
+    # --- IMAGE MAPPING (Matched exactly to your GitHub filenames) ---
+    def get_team_logo(name):
+        name_lower = name.lower()
+        if "dogs" in name_lower: return "DOGS.png"
+        if "don callis" in name_lower or "dcf" in name_lower: return "DCF.png"
+        if "death juries" in name_lower: return "DEATH JURIES.png"
+        if "fraxiom" in name_lower: return "FRAXIOM.png"
+        if "neo genesis" in name_lower: return "NEO GENESIS.png"
+        if "krieger" in name_lower: return "KRIEGER.png"
+        if "grizzled" in name_lower or "gyv" in name_lower: return "GYV.png"
+        if "sinner" in name_lower: return "SINNER & SAINTS.png"
+        if "rascalz" in name_lower: return "RASCALZ.png"
+        if "vanity" in name_lower: return "VANITY PROJECT.png"
+        return None
 
-    # Process teams table
+    # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
+    def render_logo(name, logo_file):
+        if logo_file:
+            return f'<img src="{logo_file}" style="max-height: 60px; max-width: 100%; margin-bottom: 10px; object-fit: contain;">'
+        else:
+            return f'<div style="background: linear-gradient(145deg, #1f2229, #15171c); border: 1px solid #30323b; border-radius: 6px; padding: 15px; margin-bottom: 10px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.1rem; letter-spacing: 1px;">{esc(name).upper()}</div>'
+
+    # --- FETCH TEAMS ---
+    all_teams = []
     if not teams.empty:
         for _, r in teams.sort_values("team_name").iterrows():
-            m_list = group_members(team_members, r.get("id"), "team_id")
-            all_groups.append({
+            all_teams.append({
                 "name": clean(r.get("team_name"), "Unnamed team"),
                 "status": clean(r.get("status"), "ACTIVE" if clean(r.get("active"), "0") == "1" else "FORMER / INACTIVE"),
-                "members": m_list,
+                "members": group_members(team_members, r.get("id"), "team_id"),
                 "notes": clean(r.get("notes"))
             })
 
-    # Process factions table (in case any are stored there)
+    # --- FETCH FACTIONS ---
+    all_factions = []
     if not factions.empty:
         for _, r in factions.sort_values("faction_name").iterrows():
-            m_list = group_members(faction_members, r.get("id"), "faction_id")
-            all_groups.append({
+            all_factions.append({
                 "name": clean(r.get("faction_name"), "Unnamed faction"),
                 "status": clean(r.get("status"), "ACTIVE" if clean(r.get("active"), "0") == "1" else "FORMER / INACTIVE"),
-                "members": m_list,
+                "members": group_members(faction_members, r.get("id"), "faction_id"),
                 "notes": clean(r.get("notes"))
             })
-
-    # Separate by actual member count: Tag Teams (exactly 2 or 0 members), Factions (3+ members)
-    tag_teams_list = [g for g in all_groups if len(g["members"]) <= 2]
-    factions_list = [g for g in all_groups if len(g["members"]) >= 3]
 
     left, right = st.columns(2)
 
     # --- LEFT COLUMN: TAG TEAMS ---
     with left:
-        st.markdown("### Teams (2 Members)")
-        if not tag_teams_list:
-            st.info("No tag teams (2 members) recorded.")
+        st.markdown("### Teams")
+        if not all_teams:
+            st.info("No tag teams recorded.")
         else:
-            for g in tag_teams_list:
+            for g in all_teams:
                 m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "Memberships not recorded"
                 n_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(g["notes"])}</div>' if g["notes"] else ""
+                
+                logo_file = get_team_logo(g["name"])
+                logo_html = render_logo(g["name"], logo_file)
+
                 st.markdown(
                     f'<div class="profile-card">'
+                    f'{logo_html}'
                     f'<div style="float:right" class="profile-sub">{esc(g["status"])}</div>'
                     f'<div class="profile-name">{esc(g["name"])}</div>'
                     f'<div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{m_html}</div>'
@@ -366,15 +451,20 @@ elif page == "Teams & Factions":
 
     # --- RIGHT COLUMN: FACTIONS ---
     with right:
-        st.markdown("### Factions (3+ Members)")
-        if not factions_list:
-            st.info("No faction records (3+ members) found.")
+        st.markdown("### Factions")
+        if not all_factions:
+            st.info("No faction records found.")
         else:
-            for g in factions_list:
+            for g in all_factions:
                 m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "Memberships not recorded"
                 n_html = f'<div style="margin-top:8px;color:#9ca3af;font-size:.8rem">{esc(g["notes"])}</div>' if g["notes"] else ""
+                
+                logo_file = get_team_logo(g["name"])
+                logo_html = render_logo(g["name"], logo_file)
+
                 st.markdown(
                     f'<div class="profile-card">'
+                    f'{logo_html}'
                     f'<div style="float:right" class="profile-sub">{esc(g["status"])}</div>'
                     f'<div class="profile-name">{esc(g["name"])}</div>'
                     f'<div style="margin-top:10px;font-size:.85rem"><b>MEMBERS</b><br>{m_html}</div>'
@@ -554,9 +644,12 @@ elif page == "Match Importer":
                         pending.pop(idx)
                         st.rerun()
 
-            st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
-            confirm_batch = st.checkbox("I reviewed every queued match and checked that none are duplicates.", key="confirm_incinerator_batch")
-            if st.button("CONFIRM IMPORT — SAVE ENTIRE BATCH", type="primary", use_container_width=True):
+                       st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
+            with st.form("confirm_batch_form"):
+                confirm_batch = st.checkbox("I reviewed every queued match and checked that none are duplicates.", key="confirm_incinerator_batch")
+                submit_batch = st.form_submit_button("CONFIRM IMPORT — SAVE ENTIRE BATCH", type="primary", use_container_width=True)
+            
+            if submit_batch:
                 if not confirm_batch:
                     st.error("Please confirm that you reviewed the entire batch.")
                 else:
