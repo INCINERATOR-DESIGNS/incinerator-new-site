@@ -410,9 +410,15 @@ elif page == "Teams & Factions":
         return None
 
     # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
-    def render_logo(name, logo_file):
+        def render_logo(name, logo_file):
         if logo_file:
-            return f'<img src="{logo_file}" style="max-height: 60px; max-width: 100%; margin-bottom: 10px; object-fit: contain;">'
+            import base64
+            if os.path.exists(logo_file):
+                with open(logo_file, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode()
+                return f'<img src="data:image/png;base64,{encoded}" style="max-height: 60px; max-width: 100%; margin-bottom: 10px; object-fit: contain;">'
+            else:
+                return f'<div style="color:red; font-size:10px;">FILE NOT FOUND: {logo_file}</div>'
         else:
             return f'<div style="background: linear-gradient(145deg, #1f2229, #15171c); border: 1px solid #30323b; border-radius: 6px; padding: 15px; margin-bottom: 10px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.1rem; letter-spacing: 1px;">{esc(name).upper()}</div>'
 
