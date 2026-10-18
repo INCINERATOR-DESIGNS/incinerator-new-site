@@ -429,37 +429,59 @@ elif page == "Teams & Factions":
     left, right = st.columns(2)
 
     # --- LEFT COLUMN: TAG TEAMS ---
+        left, right = st.columns(2)
+
+    # --- LEFT COLUMN: TAG TEAMS ---
     with left:
         st.markdown("### Teams")
         if not all_teams:
             st.info("No tag teams recorded.")
         else:
-                                    for g in all_teams:
-                m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "None"
+            for g in all_teams:
+                m_list = g["members"] if g["members"] else ["None"]
                 logo_file = get_team_logo(g["name"])
-                logo_html = render_logo(g["name"], logo_file)
-                st.markdown(
-                    f'<div class="profile-card" style="text-align: center;">'
-                    f'{logo_html}'
-                    f'<div class="profile-name" style="font-size: 1.1rem; margin-bottom: 5px;">{m_html}</div>'
-                    f'<div class="profile-sub" style="margin-top: 15px; border-top: 1px solid #30323b; padding-top: 8px;">{esc(g["status"])}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
+                
+                with st.container():
+                    if logo_file:
+                        import base64
+                        try:
+                            with open(logo_file, "rb") as f:
+                                encoded = base64.b64encode(f.read()).decode()
+                            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{encoded}" style="max-height: 120px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+                        except Exception:
+                            st.markdown(f'<div style="background: #1f2229; padding: 20px; text-align: center; font-weight: 700; color: #6b7280;">{esc(g["name"]).upper()}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div style="background: #1f2229; padding: 20px; text-align: center; font-weight: 700; color: #6b7280;">{esc(g["name"]).upper()}</div>', unsafe_allow_html=True)
+                    
+                    st.markdown(f"<div style='text-align:center; font-size:1.1rem; font-weight:700; margin-bottom:5px;'>{'<br>'.join(esc(m) for m in m_list)}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align:center; color:#9ca3af; font-size:0.85rem; border-top:1px solid #30323b; padding-top:8px;'>{esc(g['status'])}</div>", unsafe_allow_html=True)
+                    st.divider()
 
     # --- RIGHT COLUMN: FACTIONS ---
-                            for g in all_factions:
-                m_html = "<br>".join(esc(m) for m in g["members"]) if g["members"] else "None"
+    with right:
+        st.markdown("### Factions")
+        if not all_factions:
+            st.info("No faction records found.")
+        else:
+            for g in all_factions:
+                m_list = g["members"] if g["members"] else ["None"]
                 logo_file = get_team_logo(g["name"])
-                logo_html = render_logo(g["name"], logo_file)
-                st.markdown(
-                    f'<div class="profile-card" style="text-align: center;">'
-                    f'{logo_html}'
-                    f'<div class="profile-name" style="font-size: 1.1rem; margin-bottom: 5px;">{m_html}</div>'
-                    f'<div class="profile-sub" style="margin-top: 15px; border-top: 1px solid #30323b; padding-top: 8px;">{esc(g["status"])}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
+                
+                with st.container():
+                    if logo_file:
+                        import base64
+                        try:
+                            with open(logo_file, "rb") as f:
+                                encoded = base64.b64encode(f.read()).decode()
+                            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{encoded}" style="max-height: 120px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+                        except Exception:
+                            st.markdown(f'<div style="background: #1f2229; padding: 20px; text-align: center; font-weight: 700; color: #6b7280;">{esc(g["name"]).upper()}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div style="background: #1f2229; padding: 20px; text-align: center; font-weight: 700; color: #6b7280;">{esc(g["name"]).upper()}</div>', unsafe_allow_html=True)
+                    
+                    st.markdown(f"<div style='text-align:center; font-size:1.1rem; font-weight:700; margin-bottom:5px;'>{'<br>'.join(esc(m) for m in m_list)}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align:center; color:#9ca3af; font-size:0.85rem; border-top:1px solid #30323b; padding-top:8px;'>{esc(g['status'])}</div>", unsafe_allow_html=True)
+                    st.divider()
 elif page == "Data Review":
     st.markdown("## Data Review"); st.caption("Review flags are read from the database; this page does not auto-correct records.")
     flagged=matches.copy()
