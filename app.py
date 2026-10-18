@@ -410,25 +410,15 @@ elif page == "Teams & Factions":
         return None
 
         # --- HELPER TO RENDER LOGO OR PLACEHOLDER ---
-        def render_logo(name, logo_file):
-        if logo_file:
-            import base64, os
-            if os.path.exists(logo_file):
-                with open(logo_file, "rb") as f:
-                    encoded = base64.b64encode(f.read()).decode()
-                return f'<img src="data:image/png;base64,{encoded}" style="width: 100%; max-height: 120px; object-fit: contain; margin-bottom: 15px;">'
+    def render_logo(name, logo_file):
+            if logo_file and os.path.exists(logo_file):
+            import base64
+            with open(logo_file, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            return f'<img src="data:image/png;base64,{encoded}" style="width: 100%; max-height: 120px; object-fit: contain; margin-bottom: 15px;">'
         return f'<div style="background: #1f2229; padding: 20px; text-align: center; color: #6b7280; font-family: Barlow Condensed; font-weight: 700; font-size: 1.2rem; margin-bottom: 15px;">{esc(name).upper()}</div>'
-    all_teams = []
-    if not teams.empty:
-        for _, r in teams.sort_values("team_name").iterrows():
-            all_teams.append({
-                "name": clean(r.get("team_name"), "Unnamed team"),
-                "status": clean(r.get("status"), "ACTIVE" if clean(r.get("active"), "0") == "1" else "FORMER / INACTIVE"),
-                "members": group_members(team_members, r.get("id"), "team_id"),
-                "notes": clean(r.get("notes"))
-            })
 
-    # --- FETCH FACTIONS ---
+        # --- FETCH FACTIONS ---
     all_factions = []
     if not factions.empty:
         for _, r in factions.sort_values("faction_name").iterrows():
