@@ -28,6 +28,7 @@ def load_data():
         return pd.DataFrame()
     with sqlite3.connect(DB_PATH) as conn:
         return pd.read_sql_query("SELECT * FROM wrestlers", conn)
+        st.write(df[['canonical_name', 'image_url']].head(10))
 
 df = load_data()
 
