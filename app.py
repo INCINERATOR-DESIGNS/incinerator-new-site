@@ -636,7 +636,7 @@ elif page == "Match Importer":
                         conn.commit()
                         st.write("DEBUG: Commit successful!")
                     
-                                        st.session_state["incinerator_pending_matches"] = []
+                    st.session_state["incinerator_pending_matches"] = []
                     st.cache_data.clear()
                     st.success("Batch Imported and Stats Calculated!")
                     st.rerun()
@@ -644,6 +644,7 @@ elif page == "Match Importer":
                 except Exception as e:
                     import traceback
                     st.error(f"CRASHED ON MATCH: {e}")
+                    st.code(traceback.format_exc())
                     st.code(traceback.format_exc()) # This will print the exact error to the screen
     else:
         st.info("Queue is empty. Paste your Excel data above to begin.")
