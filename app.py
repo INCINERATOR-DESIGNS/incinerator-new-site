@@ -573,6 +573,7 @@ elif page == "Match Importer":
         confirm_batch = st.checkbox("I confirm these matches are correct.")
         
         if st.button("CONFIRM IMPORT & CALCULATE STATS", type="primary", use_container_width=True):
+            st.write("DEBUG: Button clicked! Starting import...")
             if not confirm_batch:
                 st.error("Please check the confirmation box.")
             else:
@@ -585,6 +586,7 @@ elif page == "Match Importer":
                         next_num = conn.execute("SELECT COALESCE(MAX(match_number), 0) + 1 FROM matches").fetchone()[0]
                         
                         for offset, item in enumerate(pending):
+                            st.write(f"DEBUG: Processing match {item['match_card']}")
                             # Insert Match
                             cur = conn.execute(
                                 """INSERT INTO matches (match_number, side, event, event_date, crowd, venue, match_time, match_card, result, match_type, finish, rating, commentary, review_required, review_reason)
@@ -632,6 +634,7 @@ elif page == "Match Importer":
                                         (match_id, 2, w_id, "loss", "manual_verified", w_name)
                                     )
                         conn.commit()
+                        st.write("DEBUG: Commit successful!")
                     
                     st.session_state["incinerator_pending_matches"] = []
                     st.cache_data.clear()
