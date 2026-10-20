@@ -506,147 +506,252 @@ elif page == "Data Review":
     if not audit.empty: st.markdown("### Participant audit log"); st.dataframe(audit,use_container_width=True,hide_index=True)
 
 elif page == "Match Importer":
-    st.markdown("## 🔥 Bulk Match Importer")
-    st.info("Paste your Excel rows below. Format: Event, Date, Crowd, Venue, Match Card, Result, Match Type, Notes, Finish, Time, Rating, Commentary")
+    st.markdown("## 🔥 Match Importer")
+    st.warning(
+        "WORKING COPY ONLY. Matches are queued first and are not saved until you confirm the batch. "
+        "Imported records remain flagged for review; career statistics are not recalculated automatically."
+    )
 
-    # Safety check
-    if not IMPORT_ENABLED or WORKING_DATABASE is None:
-        st.error("Importer disabled. Ensure working database is present.")
+    # Fail closed: imports require explicit opt-in and an existing working-copy database.
+    safe_working_db = (
+        WORKING_DATABASE is not None
+        and "working" in WORKING_DATABASE.name.lower()
+        and WORKING_DATABASE.is_file()
+    )
+    if not IMPORT_ENABLED or not safe_working_db:
+        st.error(
+            "Importer disabled for safety. Ensure INCINERATOR_ENABLE_IMPORTER=1 "
+            "and that a valid working database file exists in the app folder."
+        )
         st.stop()
 
-    if "incinerator_pending_matches" not in st.session_state:
-        st.session_state["incinerator_pending_matches"] = []
-    pending = st.session_state["incinerator_pending_matches"]
+    # Importer data must come from the same working database that will be written.
+    import_tables = load_tables(str(WORKING_DATABASE))
+    import_wrestlers = table(import_tables, "wrestlers")
+    import_matches = table(import_tables, "matches")
+    import_audit = table(import_tables, "participant_audit")
 
-    # --- BULK PASTE BOX ---
-    with st.form("bulk_importer", clear_on_submit=True):
-        bulk_text = st.text_area("Paste Excel Data Here (Tab-Separated)", height=200)
-        submit_bulk = st.form_submit_button("PARSE & ADD TO QUEUE", use_container_width=True)
-        
-        if submit_bulk and bulk_text.strip():
-            lines = bulk_text.strip().split('\n')
-            added_count = 0
-            for line in lines:
-                # Split by tab
-                parts = [p.strip() for p in line.split('\t')]
-                if len(parts) >= 12:
-                    # Extract fields based on your Excel format
-                    event = parts[0]
-                    event_date = parts[1]
-                    crowd = parts[2]
-                    venue = parts[3]
-                    match_card = parts[5]
-                    result_text = parts[6]
-                    match_type = parts[7]
-                    note = parts[8] if len(parts) > 8 else ""
-                    finish = parts[9] if len(parts) > 9 else ""
-                    match_time = parts[10] if len(parts) > 10 else ""
-                    rating_text = parts[11] if len(parts) > 11 else ""
-                    commentary = parts[12] if len(parts) > 12 else "Mauro Ranallo & Don Callis"
-
-                    # Determine Winner (assuming Result Text matches a wrestler name in DB)
-                    # We will try to match the result text to a wrestler
-                    pending.append({
-                        "event": event, "event_date": event_date, "crowd": crowd, "venue": venue,
-                        "match_card": match_card, "result": result_text, "match_type": match_type,
-                        "note": note, "finish": finish, "match_time": match_time,
-                        "rating": float(rating_text) if rating_text.replace('.','',1).isdigit() else None,
-                        "commentary": commentary, "side": "FUSION" if "EP" in event else "PPV"
-                    })
-                    added_count += 1
-            if added_count > 0:
-                st.success(f"Added {added_count} matches to the queue!")
-                st.rerun()
-
-    # --- PENDING QUEUE DISPLAY ---
-    if pending:
-        st.markdown("### 📋 Pending Matches")
-        for idx, item in enumerate(pending):
-            st.write(f"{idx+1}. **{item['event']}** | {item['match_card']} | Winner: {item['result']}")
-        
-        if st.button("CLEAR QUEUE", type="secondary"):
-            st.session_state["incinerator_pending_matches"] = []
-            st.rerun()
-
-        st.divider()
-        st.warning("⚠️ Clicking Import will save these matches AND automatically update wrestler stats.")
-        confirm_batch = st.checkbox("I confirm these matches are correct.")
-        
-        if st.button("CONFIRM IMPORT & CALCULATE STATS", type="primary", use_container_width=True):
-            st.write("DEBUG: Button clicked! Starting import...")
-            if not confirm_batch:
-                st.error("Please check the confirmation box.")
-            else:
-                try:
-                    with sqlite3.connect(str(WORKING_DATABASE), timeout=10) as conn:
-                        conn.execute("PRAGMA foreign_keys=ON")
-                        conn.execute("BEGIN IMMEDIATE")
-                        
-                        # 1. GET NEXT MATCH NUMBER
-                        next_num = conn.execute("SELECT COALESCE(MAX(match_number), 0) + 1 FROM matches").fetchone()[0]
-                        
-                        for offset, item in enumerate(pending):
-                            st.write(f"DEBUG: Processing match {item['match_card']}")
-                            # Insert Match
-                            cur = conn.execute(
-                                """INSERT INTO matches (match_number, side, event, event_date, crowd, venue, match_time, match_card, result, match_type, finish, rating, commentary, review_required, review_reason)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                                (next_num + offset, item["side"], item["event"], item["event_date"] or None,
-                                 item["crowd"] or None, item["venue"] or None, item["match_time"] or None,
-                                 item["match_card"], item["result"] or "Unknown", item["match_type"], item["finish"] or None,
-                                 item["rating"], item["commentary"], 0, None) # 0 = No review needed
-                            )
-                            match_id = cur.lastrowid
-
-                            # 2. AUTO-STATS CALCULATION (The Magic Part)
-                            # We try to find the winner name in the result text
-                            # If Result is "DOGS", we need to map "DOGS" to specific wrestlers
-                            # For simplicity, we check if any wrestler's name is in the result text
-                            all_wrestlers = conn.execute("SELECT id, canonical_name FROM wrestlers").fetchall()
-                            
-                            for w_id, w_name in all_wrestlers:
-                                # If the wrestler's name is in the result text, they get a win
-                                if w_name.lower() in item["result"].lower():
-                                    # Update Wrestler Profile (Wins)
-                                    conn.execute("""
-                                        UPDATE wrestler_profiles 
-                                        SET wins = COALESCE(wins, 0) + 1,
-                                            total_matches = COALESCE(total_matches, 0) + 1,
-                                            current_win_streak = COALESCE(current_win_streak, 0) + 1
-                                        WHERE wrestler_id = ?
-                                    """, (w_id,))
-                                    # Insert Match Participant (Winner)
-                                    conn.execute(
-                                        "INSERT INTO match_participants (match_id, side_no, wrestler_id, result, parse_status, source_label) VALUES (?, ?, ?, ?, ?, ?)",
-(match_id, 1, w_id, "win", "manual_verified", w_name)
-                                    )
-                                # If their name is in the match card but NOT the result text, they get a loss
-                                elif w_name.lower() in item["match_card"].lower():
-                                    conn.execute("""
-                                        UPDATE wrestler_profiles 
-                                        SET losses = COALESCE(losses, 0) + 1,
-                                            total_matches = COALESCE(total_matches, 0) + 1,
-                                            current_win_streak = 0
-                                        WHERE wrestler_id = ?
-                                    """, (w_id,))
-                                    conn.execute(
-                                        "INSERT INTO match_participants (match_id, side_no, wrestler_id, result, parse_status, source_label) VALUES (?, ?, ?, ?, ?, ?)",
-                                        (match_id, 2, w_id, "loss", "manual_verified", w_name)
-                                    )
-                        conn.commit()
-                        st.write("DEBUG: Commit successful!")
-                    
-                    st.session_state["incinerator_pending_matches"] = []
-                    st.cache_data.clear()
-                    st.success("Batch Imported and Stats Calculated!")
-                    st.rerun()
-                    
-                except Exception as e:
-                    import traceback
-                    st.error(f"CRASHED ON MATCH: {e}")
-                    st.code(traceback.format_exc())
-                    st.code(traceback.format_exc()) # This will print the exact error to the screen
+    wrestlers_for_import = import_wrestlers.copy()
+    if wrestlers_for_import.empty:
+        st.error("The wrestlers table is empty; import is disabled.")
     else:
-        st.info("Queue is empty. Paste your Excel data above to begin.")
-st.markdown('<div style="text-align:center;color:#6b7280;font-size:.78rem;letter-spacing:1px">🔥 INCINERATOR · CEW RECORDS<br>WORKING COPY PROTECTION · VERIFIED IMPORTS ONLY</div>',unsafe_allow_html=True)
+        wrestler_rows = wrestlers_for_import.sort_values("canonical_name")
+        names = {
+            str(r.canonical_name): int(r.id)
+            for _, r in wrestler_rows.iterrows()
+            if clean(r.get("canonical_name")) and pd.notna(r.get("id"))
+        }
 
+        if "incinerator_pending_matches" not in st.session_state:
+            st.session_state["incinerator_pending_matches"] = []
+
+        pending = st.session_state["incinerator_pending_matches"]
+
+        with st.form("real_match_importer", clear_on_submit=True):
+            st.subheader("Event details")
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                event = st.text_input("FUSION EP / Event *", placeholder="FUSION EP 31")
+            with c2:
+                event_date = st.text_input("Date", placeholder="27 JUN 2027")
+            with c3:
+                crowd = st.text_input("Crowd")
+            with c4:
+                venue = st.text_input("Venue")
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                side = st.selectbox("Show category", ["FUSION", "PPV", "Other"])
+            with c2:
+                match_type = st.selectbox(
+                    "Match type",
+                    ["Single", "Tag Team", "6 Woman Tag Team Match", "Triple Threat",
+                     "Fatal 4-Way", "Battle Royal", "Segment", "Other"]
+                )
+            with c3:
+                commentary = st.selectbox(
+                    "Commentary team",
+                    ["Mauro Ranallo + Don Callis", "Mauro Ranallo + Kevin Kelly",
+                     "Mauro Ranallo + Don Callis + Kevin Kelly"]
+                )
+
+            card = st.text_area(
+                "Match card / segment description *",
+                placeholder="RASCALZ (TREY MIGUEL & DEZMOND XAVIER) VS DOGS (CLARK CONNORS & GABE KIDD)",
+                height=90
+            )
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                result = st.text_input("Result text", placeholder="Rascals defeated Dogs")
+            with c2:
+                finish = st.text_input("Via / finish", placeholder="Pinfall")
+            with c3:
+                match_time = st.text_input("Match time", placeholder="19:17")
+            note = st.text_input("Match note (optional)")
+
+            st.subheader("Link participants explicitly")
+            st.caption("Choose each wrestler from the database. Leave both participant lists empty for a segment.")
+            c1, c2 = st.columns(2)
+            with c1:
+                side_a = st.multiselect("Side A / first wrestler(s)", list(names))
+            with c2:
+                side_b = st.multiselect("Side B / opposing wrestler(s)", list(names))
+
+            outcome = st.selectbox(
+                "Validated outcome",
+                ["Needs review / unknown", "Side A wins", "Side B wins", "Draw",
+                 "No contest", "Segment / no wrestler result"]
+            )
+            rating_text = st.text_input("Star rating (leave blank for unrated)", placeholder="4.25 or 5.25")
+            confirm = st.checkbox("I checked the event and participant names, and this match is not already in the database.")
+            add_to_queue = st.form_submit_button("ADD MATCH TO PENDING QUEUE", use_container_width=True)
+
+        if add_to_queue:
+            errors = []
+            if not event.strip():
+                errors.append("Event name is required.")
+            if not card.strip():
+                errors.append("Match card / segment description is required.")
+            if not confirm:
+                errors.append("Confirm the duplicate/name check before adding this match.")
+            if set(side_a) & set(side_b):
+                errors.append("A wrestler cannot be on both sides.")
+            if match_type != "Segment" and outcome not in {"Segment / no wrestler result", "Needs review / unknown"} and (not side_a or not side_b):
+                errors.append("Choose participants for both sides before recording a match outcome.")
+            try:
+                rating = float(rating_text) if rating_text.strip() else None
+                if rating is not None and rating < 0:
+                    errors.append("Rating must be zero or higher.")
+            except ValueError:
+                rating = None
+                errors.append("Rating must be a number, or blank for unrated.")
+
+            if errors:
+                for error in errors:
+                    st.error(error)
+            else:
+                pending.append({
+                    "event": event.strip(), "event_date": event_date.strip(),
+                    "crowd": crowd.strip(), "venue": venue.strip(), "side": side,
+                    "match_type": match_type, "commentary": commentary,
+                    "match_card": card.strip(), "result": result.strip(), "finish": finish.strip(),
+                    "match_time": match_time.strip(), "note": note.strip(),
+                    "side_a": list(side_a), "side_b": list(side_b), "outcome": outcome,
+                    "rating": rating
+                })
+                st.success(f"Added to pending queue. {len(pending)} match(es) waiting; nothing has been written to the database.")
+
+        st.markdown("## 📋 Pending Matches")
+        if not pending:
+            st.info("Your pending queue is empty. Add a match above to begin.")
+        else:
+            st.caption(f"{len(pending)} match(es) queued in this session. They are not saved yet.")
+            for idx, item in enumerate(pending):
+                with st.expander(f"{idx + 1}. {item['event']} · {item['match_card']}", expanded=False):
+                    st.write(f"**Date:** {item['event_date'] or 'Not entered'} · **Type:** {item['match_type']}")
+                    st.write(f"**Result choice:** {item['outcome']} · **Rating:** {item['rating'] if item['rating'] is not None else 'Unrated'}")
+                    st.write(f"**Side A:** {', '.join(item['side_a']) or 'None'}")
+                    st.write(f"**Side B:** {', '.join(item['side_b']) or 'None'}")
+                    st.caption("To change a queued match, remove it and add it again with the corrected details.")
+                    if st.button("REMOVE FROM QUEUE", key=f"remove_pending_{idx}"):
+                        pending.pop(idx)
+                        st.rerun()
+
+            st.warning("Confirming imports all queued matches together. If any insert fails, the entire database transaction is rolled back.")
+            confirm_batch = st.checkbox("I reviewed every queued match and checked that none are duplicates.", key="confirm_incinerator_batch")
+            if st.button("CONFIRM IMPORT — SAVE ENTIRE BATCH", type="primary", use_container_width=True):
+                if not confirm_batch:
+                    st.error("Please confirm that you reviewed the entire batch.")
+                else:
+                    try:
+                        if (not IMPORT_ENABLED or WORKING_DATABASE is None
+                                or "working" not in WORKING_DATABASE.name.lower()
+                                or not WORKING_DATABASE.is_file()):
+                            raise RuntimeError("Safety check failed: refusing to write to a non-working database.")
+                        with sqlite3.connect(str(WORKING_DATABASE), timeout=10) as conn:
+                            conn.execute("PRAGMA foreign_keys=ON")
+                            conn.execute("BEGIN IMMEDIATE")
+                            match_cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
+                            required_match_cols = {
+                                "match_number", "side", "event", "event_date", "crowd", "venue",
+                                "match_time", "match_card", "result", "match_type", "finish",
+                                "rating", "commentary", "review_required", "review_reason"
+                            }
+                            if not required_match_cols.issubset(match_cols):
+                                raise RuntimeError("The matches table schema does not match the expected importer schema.")
+                            participant_cols = {row[1] for row in conn.execute("PRAGMA table_info(match_participants)")}
+                            required_participant_cols = {
+                                "match_id", "side_no", "source_label", "wrestler_id", "team_name",
+                                "result", "parse_status", "parse_note"
+                            }
+                            if not required_participant_cols.issubset(participant_cols):
+                                raise RuntimeError("The match_participants table schema does not match the expected importer schema.")
+
+                            next_num = conn.execute("SELECT COALESCE(MAX(match_number), 0) + 1 FROM matches").fetchone()[0]
+                            saved = []
+                            outcome_labels = {
+                                "Side A wins": "Side A wins", "Side B wins": "Side B wins",
+                                "Draw": "Draw", "No contest": "No contest",
+                                "Segment / no wrestler result": "Segment",
+                                "Needs review / unknown": "Needs review"
+                            }
+                            for offset, item in enumerate(pending):
+                                outcome = item["outcome"]
+                                review_reason = (
+                                    "Batch importer: participant/result review required"
+                                    if outcome in {"Needs review / unknown", "Segment / no wrestler result"} or item["match_type"] == "Segment"
+                                    else "Batch importer: verify before statistics refresh"
+                                )
+                                cur = conn.execute(
+                                    """INSERT INTO matches
+                                    (match_number, side, event, event_date, crowd, venue, match_time, match_card,
+                                     result, match_type, finish, rating, commentary, review_required, review_reason)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                    (next_num + offset, item["side"], item["event"], item["event_date"] or None,
+                                     item["crowd"] or None, item["venue"] or None, item["match_time"] or None,
+                                     item["match_card"], item["result"] or outcome_labels[outcome],
+                                     item["match_type"], item["finish"] or None, item["rating"],
+                                     item["commentary"], 1, review_reason)
+                                )
+                                match_id = cur.lastrowid
+                                for side_no, side_names in ((1, item["side_a"]), (2, item["side_b"])):
+                                    for wrestler_name in side_names:
+                                        if wrestler_name not in names:
+                                            raise RuntimeError(f"Wrestler '{wrestler_name}' is no longer available in the loaded roster.")
+                                        participant_result = "unknown"
+                                        if outcome == "Side A wins":
+                                            participant_result = "win" if side_no == 1 else "loss"
+                                        elif outcome == "Side B wins":
+                                            participant_result = "win" if side_no == 2 else "loss"
+                                        elif outcome == "Draw":
+                                            participant_result = "draw"
+                                        elif outcome == "No contest":
+                                            participant_result = "no contest"
+                                        conn.execute(
+                                            """INSERT INTO match_participants
+                                            (match_id, side_no, source_label, wrestler_id, team_name, result, parse_status, parse_note)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                                            (match_id, side_no, wrestler_name, names[wrestler_name], None,
+                                             participant_result, "manual_verified", "Selected explicitly in batch Match Importer")
+                                        )
+                                if item["note"] and "participant_audit" in import_tables:
+                                    audit_cols = {row[1] for row in conn.execute("PRAGMA table_info(participant_audit)")}
+                                    if {"match_id", "issue_type", "detail", "severity"}.issubset(audit_cols):
+                                        conn.execute(
+                                            "INSERT INTO participant_audit(match_id, issue_type, detail, severity) VALUES (?, ?, ?, ?)",
+                                            (match_id, "importer_note", item["note"], "info")
+                                        )
+                                saved.append((next_num + offset, match_id))
+                            conn.commit()
+
+                        st.session_state["incinerator_pending_matches"] = []
+                        st.session_state["confirm_incinerator_batch"] = False
+                        st.cache_data.clear()
+                        st.success(f"Successfully imported {len(saved)} match(es) into {WORKING_DATABASE.name}.")
+                        st.warning("All imported matches remain flagged for review. Wrestler records, profiles, streaks, and match history were NOT automatically recalculated.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Batch import failed; no partial batch should have been committed. Details: {e}")
+
+st.divider()
+st.markdown('<div style="text-align:center;color:#6b7280;font-size:.78rem;letter-spacing:1px">🔥 INCINERATOR · CEW RECORDS<br>WORKING COPY PROTECTION · VERIFIED IMPORTS ONLY</div>',unsafe_allow_html=True)
