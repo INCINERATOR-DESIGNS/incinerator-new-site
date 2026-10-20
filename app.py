@@ -615,8 +615,8 @@ elif page == "Match Importer":
                                     """, (w_id,))
                                     # Insert Match Participant (Winner)
                                     conn.execute(
-                                        "INSERT INTO match_participants (match_id, side_no, wrestler_id, result, parse_status) VALUES (?, ?, ?, ?, ?)",
-                                        (match_id, 1, w_id, "win", "manual_verified")
+                                        "INSERT INTO match_participants (match_id, side_no, wrestler_id, result, parse_status, source_label) VALUES (?, ?, ?, ?, ?, ?)",
+(match_id, 1, w_id, "win", "manual_verified", w_name)
                                     )
                                 # If their name is in the match card but NOT the result text, they get a loss
                                 elif w_name.lower() in item["match_card"].lower():
@@ -628,10 +628,9 @@ elif page == "Match Importer":
                                         WHERE wrestler_id = ?
                                     """, (w_id,))
                                     conn.execute(
-                                        "INSERT INTO match_participants (match_id, side_no, wrestler_id, result, parse_status) VALUES (?, ?, ?, ?, ?)",
-                                        (match_id, 2, w_id, "loss", "manual_verified")
+                                        "INSERT INTO match_participants (match_id, side_no, wrestler_id, result, parse_status, source_label) VALUES (?, ?, ?, ?, ?, ?)",
+                                        (match_id, 2, w_id, "loss", "manual_verified", w_name)
                                     )
-                                    
                         conn.commit()
                     
                     st.session_state["incinerator_pending_matches"] = []
