@@ -636,13 +636,15 @@ elif page == "Match Importer":
                         conn.commit()
                         st.write("DEBUG: Commit successful!")
                     
-                    st.session_state["incinerator_pending_matches"] = []
+                                        st.session_state["incinerator_pending_matches"] = []
                     st.cache_data.clear()
                     st.success("Batch Imported and Stats Calculated!")
                     st.rerun()
                     
                 except Exception as e:
-                    st.error(f"Import failed: {e}")
+                    import traceback
+                    st.error(f"CRASHED ON MATCH: {e}")
+                    st.code(traceback.format_exc()) # This will print the exact error to the screen
     else:
         st.info("Queue is empty. Paste your Excel data above to begin.")
 st.markdown('<div style="text-align:center;color:#6b7280;font-size:.78rem;letter-spacing:1px">🔥 INCINERATOR · CEW RECORDS<br>WORKING COPY PROTECTION · VERIFIED IMPORTS ONLY</div>',unsafe_allow_html=True)
