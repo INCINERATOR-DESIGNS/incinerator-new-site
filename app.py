@@ -170,6 +170,7 @@ with st.sidebar:
     st.caption(f"Database: {DATABASE.name}")
 
 page = st.session_state["navigation_page"]
+st.warning(f"DEBUG INFO: Reading DB from {DATABASE} | Total matches in DB: {len(matches)} | Match 272 Card: {matches[matches['id'] == 272]['match_card'].values}")
 
 st.markdown('<div class="hero"><div class="hero-title">CONTINENTAL ELITE WRESTLING</div><div class="hero-sub">INCINERATOR · WRESTLERS · MATCHES · FUSION · HISTORY · LEGACY</div></div>', unsafe_allow_html=True)
 
