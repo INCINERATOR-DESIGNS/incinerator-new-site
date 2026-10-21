@@ -29,6 +29,7 @@ WORKING_DATABASE = next(
 
 LOGO_PATH = BASE_DIR / "incinerator.jpg"
 IMPORT_ENABLED = os.environ.get("INCINERATOR_ENABLE_IMPORTER", "0") == "1"
+CACHE_BUSTER = "v2.0" # Increment this number to force a hard refresh
 
 st.set_page_config(page_title="INCINERATOR | CEW Database", page_icon="🔥", layout="wide", initial_sidebar_state="expanded")
 
@@ -75,7 +76,7 @@ div[data-testid="stRadio"] {display: none !important;}
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=1, show_spinner="Connecting to the CEW archive…")
+@st.cache_data(hash_funcs={pd.DataFrame: lambda x: CACHE_BUSTER}, show_spinner="Connecting to the CEW archive…")
 def load_tables(db_path: str):
     path = Path(db_path)
     if not path.exists(): return {}
