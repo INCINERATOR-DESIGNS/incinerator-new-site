@@ -295,12 +295,23 @@ elif page == "Wrestler Directory":
                         st.write(f"Departure: {datefmt(r.get('departure_date')) if clean(r.get('departure_date')) else 'Not recorded'}")
                         st.write(f"Current / longest win streak: {clean(r.get('current_win_streak'),'0')} / {clean(r.get('longest_win_streak'),'0')}")
                         st.write(f"Average / highest rating: {clean(r.get('average_match_rating'),'Not rated')} / {clean(r.get('highest_match_rating'),'Not rated')}")
-                        if not history.empty and "wrestler_id" in history:
-                            h=history[history.wrestler_id.astype(str)==str(r.get("wrestler_id"))].copy()
+                                                # Build history dynamically from match_participants
+                        parts = table(tables, "match_participants")
+                        if not parts.empty and "wrestler_id" in parts:
+                            user_parts = parts[parts.wrestler_id.astype(str) == str(r.get("wrestler_id"))]
+                            h = matches[matches.id.isin(user_parts.match_id)].copy()
+                            
+                            # Add the result from the participant table
+                            result_map = user_parts.set_index('match_id')['result'].to_dict()
+                            h['wrestler_result'] = h['id'].map(result_map)
+                            
                             st.markdown("Recent match history")
-                            sortcols=[c for c in ["event_date","match_number"] if c in h]
-                            if sortcols: h=h.sort_values(sortcols,ascending=[False]*len(sortcols),na_position="last")
-                            for _,mr in h.head(5).iterrows(): match_card(mr)
+                            sortcols = [c for c in ["event_date", "match_number"] if c in h]
+                            if sortcols:
+                                h = h.sort_values(sortcols, ascending=[False]*len(sortcols), na_position="last")
+                            
+                            for _, mr in h.head(5).iterrows():
+                                match_card(mr)
                     st.markdown('</div>', unsafe_allow_html=True)
 
 elif page == "Events & FUSION":
