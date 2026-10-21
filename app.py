@@ -107,16 +107,17 @@ def match_card(r):
     details = [f'FINISH · {esc(clean(r.get("finish"), "NOT RECORDED"))}']
     if clean(r.get("match_time")): details.append(f'TIME · {esc(clean(r.get("match_time")))}')
     if clean(r.get("venue")): details.append(f'VENUE · {esc(clean(r.get("venue")))}')
+    
     review = '<span class="review">⚠ NEEDS DATA REVIEW</span>' if clean(r.get("review_required"), "0") in {"1", "True", "true"} else ""
     
-    matchup_text = clean(r.get("match_card"))
+    # This is the magic part that fixes the history view
+    matchup_text = clean(r.get("match_card", r.get("opponent_names")))
     if not matchup_text:
         matchup_text = "MATCHUP DETAILS PENDING"
         
-    result_text = clean(r.get("result"), "RESULT NOT RECORDED")
+    result_text = clean(r.get("result", r.get("wrestler_result")), "RESULT NOT RECORDED")
     
     st.markdown(f'<div class="match-card"><div class="match-meta"><span>{meta}</span><span class="match-type">{esc(clean(r.get("match_type"), "MATCH"))}</span></div><div class="matchup">{esc(matchup_text)}</div><div class="match-bottom"><span>RESULT · <span class="winner">{esc(result_text)}</span></span><span class="rating" style="color:{color}">{rating_text}</span><span>{" · ".join(details)}</span>{review}</div></div>', unsafe_allow_html=True)
-
 try: tables = load_tables(str(DATABASE))
 except Exception as e:
     st.error("The database could not be read."); st.exception(e); st.stop()
