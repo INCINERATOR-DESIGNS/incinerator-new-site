@@ -361,13 +361,12 @@ elif page == "Championships":
                 reign = active_reign.iloc[0]
                 won_event = clean(reign.get("won_event"), "Unknown Event")
                 won_date = datefmt(reign.get("won_date"))
+                
+                # Calculate dynamically if active
                 if clean(reign.get("days_held")) == "0" or pd.isna(reign.get("days_held")):
-    # Calculate dynamically if active
-    start = pd.to_datetime(reign.get("won_date"))
-    end = pd.to_datetime("2027-07-25") # Or however you want to set "today" for the app
-    days_held = str((end - start).days)
-else:
-    days_held = clean(reign.get("days_held"), "0")
+                    days_held = str((pd.to_datetime("2027-07-25") - pd.to_datetime(reign.get("won_date"))).days)
+                else:
+                    days_held = clean(reign.get("days_held"), "0")
                 
                 # --- HYBRID DISPLAY LOGIC ---
                 champ_name = wrestler_name_by_id.get(str(current_champ_id), "Unknown Champion")
