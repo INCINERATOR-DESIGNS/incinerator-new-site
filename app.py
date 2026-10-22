@@ -386,13 +386,13 @@ elif page == "Championships":
                     unsafe_allow_html=True
                 )
                 
-                                # Defenses Dropdown
+                                                # Defenses Dropdown
                 champ_defenses = defenses[defenses["reign_id"] == reign.get("id")]
                 with st.expander(f"🛡️ View Defenses ({len(champ_defenses)})"):
-                    if champ_defence.empty:
-                        st.write("No defenses recorded yet.")
+                    if champ_defenses.empty:
+                        st.write("No defences recorded yet.")
                     else:
-                            for _, d in champ_defenses.iterrows():
+                        for _, d in champ_defenses.iterrows():
                             # LOOKUP OPPONENT NAME
                             opp_id = d.get("opponent_id")
                             opp_name = wrestler_name_by_id.get(str(opp_id), "Unknown Opponent")
