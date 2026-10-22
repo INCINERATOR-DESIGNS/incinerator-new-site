@@ -336,9 +336,12 @@ elif page == "Championships":
     st.markdown("## 🏆 CEW Championships")
     st.caption("The gold standard of Continental Elite Wrestling.")
     
-    champs = table(tables, "Championships")
+        champs = table(tables, "Championships")
     reigns = table(tables, "title_reigns")
-    defenses = table(tables, "title_defenses")
+    
+    # FIXED TYPO: Changed title_defenses to title_defences
+    defenses = table(tables, "title_defences")
+    title_history_opponents = table(tables, "wrestler_title_history") # Pulls custom opponent names if you have this
     
     if champs.empty:
         st.info("No championships found in the database.")
@@ -379,14 +382,23 @@ elif page == "Championships":
                     unsafe_allow_html=True
                 )
                 
-                # Defenses Dropdown
+                                # Defenses Dropdown
                 champ_defenses = defenses[defenses["reign_id"] == reign.get("id")]
                 with st.expander(f"🛡️ View Defenses ({len(champ_defenses)})"):
                     if champ_defenses.empty:
                         st.write("No defenses recorded yet.")
                     else:
                         for _, d in champ_defenses.iterrows():
-                            st.write(f"• **{clean(d.get('event_date'))}** at **{clean(d.get('event_name'))}** — {clean(d.get('match_time'))} mins — ⭐ {clean(d.get('star_rating'))}")
+                            # LOOKUP OPPONENT NAME
+                            opp_id = d.get("opponent_id")
+                            opp_name = wrestler_name_by_id.get(str(opp_id), "Unknown Opponent")
+                            
+                            # If you manually entered a team name in the DB, use that instead
+                            if not pd.isna(d.get("opponent_name")):
+                                opp_name = clean(d.get("opponent_name"))
+
+                            # Print the full line
+                            st.write(f"• vs. **{esc(opp_name)}** on **{clean(d.get('event_date'))}** at **{clean(d.get('event_name'))}** — {clean(d.get('match_time'))} mins — ⭐ {clean(d.get('star_rating'))}")
             
             # History Dropdown
             with st.expander("📜 View Full Title History"):
@@ -409,7 +421,15 @@ elif page == "Championships":
                         r_lost = datefmt(r.get("lost_date")) if clean(r.get("lost_date")) else "Current"
                         r_days = clean(r.get("days_held"), "0")
                         
-                        st.markdown(f"**{esc(r_champ)}** ({r_won} - {r_lost}) — {r_days} Days — *{esc(r_status)}*")
+                                                st.markdown(f"**{esc(r_champ)}** ({r_won} - {r_lost}) — {r_days} Days — *{esc(r_status)}*")
+                        
+                        # SHOW DEFENSES IN HISTORY TOO
+                        hist_defenses = defenses[defenses["reign_id"] == r.get("id")]
+                        if not hist_defenses.empty:
+                            for _, hd in hist_defenses.iterrows():
+                                h_opp_id = hd.get("opponent_id")
+                                h_opp_name = wrestler_name_by_id.get(str(h_opp_id), "Unknown Opponent")
+                                st.caption(f"🛡️ Defended vs. {esc(h_opp_name)} at {clean(hd.get('event_name'))} — ⭐ {clean(hd.get('star_rating'))}")
             
             st.divider()
 elif page == "Teams & Factions":
