@@ -334,13 +334,12 @@ elif page == "Events & FUSION":
         else: st.info("The event fields required to group episodes are not available.")
 elif page == "Championships":
     st.markdown("## 🏆 CEW Championships")
-    st.caption("The gold standard of Continental Elite Wrestling.")
-    
-        champs = table(tables, "Championships")
+    st.caption("The gold standard of Continental Elite Wrestling.")    
+ champs = table(tables, "Championships")
     reigns = table(tables, "title_reigns")
     
     # FIXED TYPO: Changed title_defenses to title_defences
-    defenses = table(tables, "title_defences")
+    defenses = table(tables, "title_defenses")
     title_history_opponents = table(tables, "wrestler_title_history") # Pulls custom opponent names if you have this
     
     if champs.empty:
