@@ -404,7 +404,7 @@ elif page == "Championships":
                             # Print the full line
                             st.write(f"• vs. **{esc(opp_name)}** on **{clean(d.get('event_date'))}** at **{clean(d.get('event_name'))}** — {clean(d.get('match_time'))} mins — ⭐ {clean(d.get('star_rating'))}")
             
-            # History Dropdown
+                        # History Dropdown
             with st.expander("📜 View Full Title History"):
                 title_reigns = reigns[reigns["championship_id"] == title_id].sort_values("won_date")
                 if title_reigns.empty:
@@ -425,7 +425,18 @@ elif page == "Championships":
                         r_lost = datefmt(r.get("lost_date")) if clean(r.get("lost_date")) else "Current"
                         r_days = clean(r.get("days_held"), "0")
                         
-                                                st.markdown(f"**{esc(r_champ)}** ({r_won} - {r_lost}) — {r_days} Days — *{esc(r_status)}*")
+                        st.markdown(f"**{esc(r_champ)}** ({r_won} - {r_lost}) — {r_days} Days — *{esc(r_status)}*")
+                        
+                        # SHOW DEFENSES IN HISTORY TOO
+                        hist_defenses = defenses[defenses["reign_id"] == r.get("id")]
+                        if not hist_defenses.empty:
+                            for _, hd in hist_defenses.iterrows():
+                                h_opp_id = hd.get("opponent_id")
+                                h_opp_name = wrestler_name_by_id.get(str(h_opp_id), "Unknown Opponent")
+                                if "opponent_name" in hd and not pd.isna(hd.get("opponent_name")):
+                                    h_opp_name = clean(hd.get("opponent_name"))
+                                
+                                st.caption(f"🛡️ Defended vs. {esc(h_opp_name)} at {clean(hd.get('event_name'))} — ⭐ {clean(hd.get('star_rating'))}")
                         
                         # SHOW DEFENSES IN HISTORY TOO
                         hist_defenses = defenses[defenses["reign_id"] == r.get("id")]
