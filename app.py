@@ -385,16 +385,16 @@ elif page == "Championships":
                                 # Defenses Dropdown
                 champ_defenses = defenses[defenses["reign_id"] == reign.get("id")]
                 with st.expander(f"🛡️ View Defenses ({len(champ_defenses)})"):
-                    if champ_defenses.empty:
+                    if champ_defence.empty:
                         st.write("No defenses recorded yet.")
                     else:
-                        for _, d in champ_defenses.iterrows():
+                            for _, d in champ_defenses.iterrows():
                             # LOOKUP OPPONENT NAME
                             opp_id = d.get("opponent_id")
                             opp_name = wrestler_name_by_id.get(str(opp_id), "Unknown Opponent")
                             
                             # If you manually entered a team name in the DB, use that instead
-                            if not pd.isna(d.get("opponent_name")):
+                            if "opponent_name" in d and not pd.isna(d.get("opponent_name")):
                                 opp_name = clean(d.get("opponent_name"))
 
                             # Print the full line
