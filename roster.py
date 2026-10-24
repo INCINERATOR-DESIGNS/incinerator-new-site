@@ -14,7 +14,7 @@ h1, h2, h3 { font-family: 'Barlow Condensed', sans-serif !important; text-transf
 div[data-testid="stImage"] img { border-radius: 8px; border-bottom: 3px solid #f04444; margin-bottom: 5px; }
 .card-name { text-align: center; font-family: 'Barlow Condensed'; font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1.1; margin-top: 5px; }
 .card-sub { text-align: center; font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-.champion-tag { text-align: center; font-size: 0.65rem; color: #f04444; font-weight: 800; letter-spacing: 1px; margin-bottom: 15px; }
+.dual-tag { text-align: center; font-size: 0.65rem; color: #f04444; font-weight: 800; letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,7 +38,6 @@ if df.empty:
 else:
     # Function to display a 5-column grid
     def display_grid(dataframe):
-        # Sort alphabetically by canonical_name
         dataframe = dataframe.sort_values("canonical_name")
         rows = len(dataframe)
         for i in range(0, rows, 5):
@@ -48,53 +47,69 @@ else:
                     row = dataframe.iloc[i + j]
                     name = str(row.get("canonical_name", "Unknown"))
                     img_url = str(row.get("image_url", ""))
+                    contract = str(row.get("contract_type", ""))
                     
                     with cols[j]:
+                        # Image logic
                         if img_url and img_url != "nan" and img_url.strip():
                             st.image(img_url, use_container_width=True)
                         else:
-                            # Placeholder if no image
                             st.markdown(f'<div style="background:#1f2229; height:250px; border-radius:8px; border-bottom:3px solid #f04444; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#4a4f5c;">🔥</div>', unsafe_allow_html=True)
                         
+                        # Name
                         st.markdown(f'<div class="card-name">{name}</div>', unsafe_allow_html=True)
                         
-                        # Check if champion (you can update these names as titles change)
-                        champions = ["Josh Alexander", "Giulia", "Gabe Kidd", "Starlight Kid"]
-                        if name in champions:
-                            st.markdown('<div class="champion-tag">🏆 CHAMPION</div>', unsafe_allow_html=True)
+                        # Dual Contract Tag
+                        if "DUAL" in contract.upper():
+                            # Extracts the promotion name (e.g. "WWE/AAA" from "DUAL WITH WWE/AAA")
+                            promo = contract.upper().replace("DUAL WITH", "").replace("DUAL", "").strip()
+                            st.markdown(f'<div class="dual-tag">DUAL: {promo}</div>', unsafe_allow_html=True)
                         else:
-                            st.markdown('<div class="champion-tag" style="opacity:0;">.</div>', unsafe_allow_html=True)
+                            st.markdown('<div class="dual-tag" style="opacity:0;">.</div>', unsafe_allow_html=True)
 
-    # 1. CHAMPIONS SECTION
-    st.markdown("### 👑 THE CHAMPIONS")
-    # List the exact names of your current champions here
-    champ_names = ["Josh Alexander", "Giulia", "Gabe Kidd", "Starlight Kid", "Dezmond Xavier", "Zachary Wentz", "Myron Reed"]
-    champs_df = df[df["canonical_name"].isin(champ_names)]
-    if not champs_df.empty:
-        display_grid(champs_df)
-    else:
-        st.info("Champions not found in database. Check names.")
+
+    # --- TABS ---
+    tab_signed, tab_alumni = st.tabs(["📋 SIGNED ROSTER", "🎓 ALUMNI"])
+
+    # --- TAB 1: SIGNED ROSTER ---
+    with tab_signed:
+        # Filter for SIGNED only
+        signed_df = df[df["status"] == "SIGNED"]
+        
+        if signed_df.empty:
+            st.warning("No signed wrestlers found. Check the database.")
+        else:
+            # MEN'S DIVISION
+            st.markdown("### 👨 MEN'S DIVISION")
+            men_df = signed_df[signed_df["gender"] == "MEN"]
+            if not men_df.empty:
+                display_grid(men_df)
+            else:
+                st.info("No men currently signed.")
+
+            st.divider()
+
+            # WOMEN'S DIVISION
+            st.markdown("### 👩 WOMEN'S DIVISION")
+            women_df = signed_df[signed_df["gender"] == "WOMEN"]
+            if not women_df.empty:
+                display_grid(women_df)
+            else:
+                st.info("No women currently signed.")
+
+    # --- TAB 2: ALUMNI ---
+    with tab_alumni:
+        # Filter for ALUMNI only
+        alumni_df = df[df["status"] == "ALUMNI"]
+        
+        if alumni_df.empty:
+            st.info("No Alumni found.")
+        else:
+            display_grid(alumni_df)
 
     st.divider()
 
-    # 2. MEN'S DIVISION
-    st.markdown("### 👨 MEN'S DIVISION")
-    # Assume women have 'W' or 'Women' in their division column, or we filter by specific names
-    women_names = ["Giulia", "Starlight Kid", "Kairi", "Mariah May", "Dani Luna", "Killer Kelly", "Rina", "Miyu Yamashita", "Sol Ruca", "La Catalina", "Isla Dawn", "Kay Lee Ray", "Myla Grace", "Priscilla Kelly", "Kelani Jordan", "Kendal Grey", "Zaria", "Zayda Steel", "Angel Hayze", "Dani Luna", "Charlie", "Maddy Morgan", "Brook Havok"]
-    
-    men_df = df[~df["canonical_name"].isin(women_names)]
-    display_grid(men_df)
-
-    st.divider()
-
-    # 3. WOMEN'S DIVISION
-    st.markdown("### 👩 WOMEN'S DIVISION")
-    women_df = df[df["canonical_name"].isin(women_names)]
-    display_grid(women_df)
-
-    st.divider()
-
-    # 4. STAFF
+    # --- STAFF ---
     st.markdown("### 🎙️ CEW STAFF")
     staff_cols = st.columns(5)
     staff = ["Amit Kandari (President)", "Mauro Ranallo", "Don Callis", "Kevin Kelly"]
